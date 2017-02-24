@@ -10,10 +10,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Sync sends file deltas or literals to the caller in order to efficiently re-construct a remote file.
-// The caller has to make sure to close the "c" channel after sending all the block checksums or this
-// function will deadlock. Once done sending all the block operations, the "o" channel is close to
-// signal the caller the end of transsmision.
+// Sync sends file deltas or literals to the caller in order to efficiently re-construct a remote file. Whether to send
+// data or literals is determined by the checksums received from the caller.
 func Sync(ctx context.Context, r io.Reader, shash hash.Hash, c <-chan BlockChecksum) chan<- BlockOperation {
 	// Build lookup table using remote signatures
 	t := make(map[uint32][]BlockChecksum)
@@ -53,7 +51,7 @@ func Sync(ctx context.Context, r io.Reader, shash hash.Hash, c <-chan BlockCheck
 
 			if err != nil {
 				o <- BlockOperation{Error: errors.Wrapf(err, "failed reading file")}
-				// return since data corruption in the server might be possible.
+				// return since data corruption in the server is possible and a re-sync is required.
 				return
 			}
 
