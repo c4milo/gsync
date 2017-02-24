@@ -2,15 +2,15 @@ package rsync
 
 import (
 	"context"
+	"hash"
 	"io"
 
-	"github.com/huichen/murmur"
 	"github.com/pkg/errors"
 )
 
 // Checksums reads data blocks from reader and pipes out block checksums on the
 // returning channel, closing it when done reading or when the context is cancelled.
-func Checksums(ctx context.Context, r io.Reader) chan<- BlockChecksum {
+func Checksums(ctx context.Context, r io.Reader, shash hash.Hash) chan<- BlockChecksum {
 	var index uint64
 	buffer := make([]byte, 0, DefaultBlockSize)
 	c := make(chan<- BlockChecksum)
@@ -42,7 +42,7 @@ func Checksums(ctx context.Context, r io.Reader) chan<- BlockChecksum {
 
 			block := buffer[:n]
 			weak := rollingHash(block)
-			strong := murmur.Murmur3(block)
+			strong := shash.Sum(block)
 
 			c <- BlockChecksum{
 				Index:  index,
@@ -56,7 +56,7 @@ func Checksums(ctx context.Context, r io.Reader) chan<- BlockChecksum {
 	return c
 }
 
-// Apply reconstructs a file given a set of operations. The caller must close the ops channel when done or there willl be a deadlock.
+// Apply reconstructs a file given a set of operations. The caller must close the ops channel or the context when done or there willl be a deadlock.
 func Apply(ctx context.Context, dst io.WriterAt, cache io.ReaderAt, ops <-chan BlockOperation) error {
 	buffer := make([]byte, 0, DefaultBlockSize)
 

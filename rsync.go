@@ -30,7 +30,7 @@ type BlockChecksum struct {
 	// Index is the block index
 	Index uint64
 	// Strong refers to the expensive checksum, for our implementation it is murmur3.
-	Strong uint32
+	Strong []byte
 	// Weak refers to the fast rsync rolling checksum
 	Weak uint32
 	// Error is used to report the error reading the file or calculating checksums.

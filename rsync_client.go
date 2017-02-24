@@ -1,11 +1,12 @@
 package rsync
 
 import (
+	"bytes"
 	"context"
+	"hash"
 	"io"
 
 	"github.com/golang/glog"
-	"github.com/huichen/murmur"
 	"github.com/pkg/errors"
 )
 
@@ -13,7 +14,7 @@ import (
 // The caller has to make sure to close the "c" channel after sending all the block checksums or this
 // function will deadlock. Once done sending all the block operations, the "o" channel is close to
 // signal the caller the end of transsmision.
-func Sync(ctx context.Context, r io.Reader, c <-chan BlockChecksum) chan<- BlockOperation {
+func Sync(ctx context.Context, r io.Reader, shash hash.Hash, c <-chan BlockChecksum) chan<- BlockOperation {
 	// Build lookup table using remote signatures
 	t := make(map[uint32][]BlockChecksum)
 	for sum := range c {
@@ -62,7 +63,7 @@ func Sync(ctx context.Context, r io.Reader, c <-chan BlockChecksum) chan<- Block
 			op := BlockOperation{Index: index}
 			if bs, ok := t[weak]; ok {
 				for _, b := range bs {
-					if murmur.Murmur3(block) == b.Strong {
+					if bytes.Compare(shash.Sum(block), b.Strong) == 0 {
 						// instructs the remote end to copy block data at offset b.Index
 						// from remote file.
 						op.IndexB = b.Index
