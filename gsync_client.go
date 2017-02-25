@@ -18,7 +18,8 @@ func Sync(ctx context.Context, r io.Reader, shash hash.Hash, remote map[uint32][
 
 	go func() {
 		defer close(o)
-		// Read the file, see if there are content matches against remote blocks and send literal or data operation.
+		// Read the file, see if there are content matches against remote blocks and send literal or data operation in order to help to reconstruct
+		// the file in the remote end.
 		for {
 			// Allow for cancellation.
 			select {
