@@ -74,7 +74,7 @@ func Apply(ctx context.Context, dst io.WriterAt, cache io.ReaderAt, ops <-chan B
 			block = o.Data
 		} else {
 			n, err := cache.ReadAt(buffer, (indexB * DefaultBlockSize))
-			if err != nil && err != io.EOF {
+			if err != nil {
 				return errors.Wrapf(err, "failed reading cached block")
 			}
 
