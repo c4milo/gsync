@@ -41,7 +41,7 @@ type BlockChecksum struct {
 type BlockOperation struct {
 	// Index is the block index in the source file.
 	Index uint64
-	// IndexB is the block index to copy from the remote file, avoiding network transmission.
+	// IndexB is the block index to copy from the remote file, avoiding unnecessary network transmission.
 	IndexB uint64
 	// Data is the delta to be applied to the remote file. No data means
 	// the client found a matching checksum for this block, which means that the remote end proceeds to

@@ -6,25 +6,24 @@ import (
 	"hash"
 	"io"
 
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
 )
 
 // Sync sends file deltas or literals to the caller in order to efficiently re-construct a remote file. Whether to send
 // data or literals is determined by the checksums received from the caller.
-func Sync(ctx context.Context, r io.Reader, shash hash.Hash, c <-chan BlockChecksum) chan<- BlockOperation {
-	// Build lookup table using remote signatures
-	t := make(map[uint32][]BlockChecksum)
-	for sum := range c {
-		if sum.Error != nil {
-			// we continue reading just fine and print out a warning. Worst case scenario, the involved
-			// data block is re-sent.
-			glog.Warningf("block checksum error: %+v", sum.Error)
-		}
+func Sync(ctx context.Context, r io.Reader, shash hash.Hash, t map[uint32][]BlockChecksum) chan<- BlockOperation {
+	// // Build lookup table using remote signatures
+	// t := make(map[uint32][]BlockChecksum)
+	// for sum := range c {
+	// 	if sum.Error != nil {
+	// 		// we continue reading just fine and print out a warning. Worst case scenario, the involved
+	// 		// data block is re-sent.
+	// 		glog.Warningf("block checksum error: %+v", sum.Error)
+	// 	}
 
-		k := sum.Weak
-		t[k] = append(t[k], sum)
-	}
+	// 	k := sum.Weak
+	// 	t[k] = append(t[k], sum)
+	// }
 
 	var index uint64
 	buffer := make([]byte, 0, DefaultBlockSize)
