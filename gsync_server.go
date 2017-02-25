@@ -36,7 +36,11 @@ func Checksums(ctx context.Context, r io.Reader, shash hash.Hash) chan<- BlockCh
 			}
 
 			if err != nil {
-				c <- BlockChecksum{Error: errors.Wrapf(err, "failed reading file")}
+				c <- BlockChecksum{
+					Index: index,
+					Error: errors.Wrapf(err, "failed reading block"),
+				}
+				index++
 				// let the caller decide whether to interrupt the process or not.
 				continue
 			}
@@ -69,17 +73,17 @@ func Apply(ctx context.Context, dst io.WriterAt, cache io.ReaderAt, ops <-chan B
 		if len(o.Data) > 0 {
 			block = o.Data
 		} else {
-			n, err := cache.ReadAt(buffer, indexB*DefaultBlockSize)
+			n, err := cache.ReadAt(buffer, (indexB * DefaultBlockSize))
 			if err != nil && err != io.EOF {
-				return errors.Wrapf(err, "failed reading cached data")
+				return errors.Wrapf(err, "failed reading cached block")
 			}
 
 			block = buffer[:n]
 		}
 
-		_, err := dst.WriteAt(block, index*DefaultBlockSize)
+		_, err := dst.WriteAt(block, (index * DefaultBlockSize))
 		if err != nil {
-			return errors.Wrapf(err, "failed writing block at %d", o.Index)
+			return errors.Wrapf(err, "failed writing block")
 		}
 
 		// Allows for cancellation.

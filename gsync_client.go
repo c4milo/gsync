@@ -25,7 +25,10 @@ func Sync(ctx context.Context, r io.Reader, shash hash.Hash, remote map[uint32][
 			// Allow for cancellation.
 			select {
 			case <-ctx.Done():
-				o <- BlockOperation{Error: ctx.Err()}
+				o <- BlockOperation{
+					Index: index,
+					Error: ctx.Err(),
+				}
 				return
 			default:
 				// break out of the select block and continue reading
@@ -38,7 +41,10 @@ func Sync(ctx context.Context, r io.Reader, shash hash.Hash, remote map[uint32][
 			}
 
 			if err != nil {
-				o <- BlockOperation{Error: errors.Wrapf(err, "failed reading file")}
+				o <- BlockOperation{
+					Index: index,
+					Error: errors.Wrapf(err, "failed reading block"),
+				}
 				// return since data corruption in the server is possible and a re-sync is required.
 				return
 			}
