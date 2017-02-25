@@ -10,21 +10,8 @@ import (
 )
 
 // Sync sends file deltas or literals to the caller in order to efficiently re-construct a remote file. Whether to send
-// data or literals is determined by the checksums received from the caller.
-func Sync(ctx context.Context, r io.Reader, shash hash.Hash, t map[uint32][]BlockChecksum) chan<- BlockOperation {
-	// // Build lookup table using remote signatures
-	// t := make(map[uint32][]BlockChecksum)
-	// for sum := range c {
-	// 	if sum.Error != nil {
-	// 		// we continue reading just fine and print out a warning. Worst case scenario, the involved
-	// 		// data block is re-sent.
-	// 		glog.Warningf("block checksum error: %+v", sum.Error)
-	// 	}
-
-	// 	k := sum.Weak
-	// 	t[k] = append(t[k], sum)
-	// }
-
+// data or literals is determined by the remote checksums provided by the caller.
+func Sync(ctx context.Context, r io.Reader, shash hash.Hash, remote map[uint32][]BlockChecksum) chan<- BlockOperation {
 	var index uint64
 	buffer := make([]byte, 0, DefaultBlockSize)
 	o := make(chan<- BlockOperation)
@@ -58,7 +45,7 @@ func Sync(ctx context.Context, r io.Reader, shash hash.Hash, t map[uint32][]Bloc
 			weak := rollingHash(block)
 
 			op := BlockOperation{Index: index}
-			if bs, ok := t[weak]; ok {
+			if bs, ok := remote[weak]; ok {
 				for _, b := range bs {
 					if bytes.Compare(shash.Sum(block), b.Strong) == 0 {
 						// instructs the remote end to copy block data at offset b.Index
