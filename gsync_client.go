@@ -11,6 +11,7 @@ import (
 
 // Sync sends file deltas or literals to the caller in order to efficiently re-construct a remote file. Whether to send
 // data or literals is determined by the remote checksums provided by the caller.
+// This function does not block and returns immediately.
 func Sync(ctx context.Context, r io.Reader, shash hash.Hash, remote map[uint32][]BlockChecksum) chan<- BlockOperation {
 	var index uint64
 	buffer := make([]byte, 0, DefaultBlockSize)

@@ -10,6 +10,7 @@ import (
 
 // Checksums reads data blocks from reader and pipes out block checksums on the
 // returning channel, closing it when done reading or when the context is cancelled.
+// This function does not block and returns immediately.
 func Checksums(ctx context.Context, r io.Reader, shash hash.Hash) chan<- BlockChecksum {
 	var index uint64
 	buffer := make([]byte, 0, DefaultBlockSize)
