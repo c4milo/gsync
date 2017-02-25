@@ -4,7 +4,7 @@ import "testing"
 
 // Transfer tests
 func TestSync(t *testing.T) {
-	// Write file generators insted of using fixtures
+	// Write file generators instead of using fixtures
 }
 
 // Benchmarks using buffered and unbuffered channels.
