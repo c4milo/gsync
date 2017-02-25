@@ -2,9 +2,16 @@ package gsync
 
 import "testing"
 
-// Transfer tests
-func TestSync(t *testing.T) {
-	// Write file generators instead of using fixtures
+func TestServerChecksum(t *testing.T) {
+
+}
+
+func TestServerApply(t *testing.T) {
+
+}
+
+func TestClientSync(t *testing.T) {
+
 }
 
 // Benchmarks using buffered channels.
