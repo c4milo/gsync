@@ -69,7 +69,7 @@ func Apply(ctx context.Context, dst io.WriterAt, cache io.ReaderAt, ops <-chan B
 		if len(o.Data) > 0 {
 			block = o.Data
 		} else {
-			n, err := cache.ReadAt(buffer, indexB)
+			n, err := cache.ReadAt(buffer, indexB*DefaultBlockSize)
 			if err != nil && err != io.EOF {
 				return errors.Wrapf(err, "failed reading cached data")
 			}
@@ -77,7 +77,7 @@ func Apply(ctx context.Context, dst io.WriterAt, cache io.ReaderAt, ops <-chan B
 			block = buffer[:n]
 		}
 
-		_, err := dst.WriteAt(block, index)
+		_, err := dst.WriteAt(block, index*DefaultBlockSize)
 		if err != nil {
 			return errors.Wrapf(err, "failed writing block at %d", o.Index)
 		}
