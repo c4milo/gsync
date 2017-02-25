@@ -56,20 +56,11 @@ func Checksums(ctx context.Context, r io.Reader, shash hash.Hash) chan<- BlockCh
 	return c
 }
 
-// Apply reconstructs a file given a set of operations. The caller must close the ops channel or the context when done or there willl be a deadlock.
+// Apply reconstructs a file given a set of operations. The caller must close the ops channel or the context when done or there will be a deadlock.
 func Apply(ctx context.Context, dst io.WriterAt, cache io.ReaderAt, ops <-chan BlockOperation) error {
 	buffer := make([]byte, 0, DefaultBlockSize)
 
 	for o := range ops {
-		// Allow for cancellation.
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			// break out of the select block and continue reading ops
-			break
-		}
-
 		var block []byte
 		index := int64(o.Index)
 		indexB := int64(o.IndexB)
@@ -88,6 +79,15 @@ func Apply(ctx context.Context, dst io.WriterAt, cache io.ReaderAt, ops <-chan B
 		_, err := dst.WriteAt(block, index)
 		if err != nil {
 			return errors.Wrapf(err, "failed writing block at %d", o.Index)
+		}
+
+		// Allows for cancellation.
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			// break out of the select block and continue reading ops
+			break
 		}
 	}
 	return nil
