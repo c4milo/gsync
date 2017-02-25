@@ -53,6 +53,7 @@ func Sync(ctx context.Context, r io.Reader, shash hash.Hash, remote map[uint32][
 						// instructs the remote end to copy block data at offset b.Index
 						// from remote file.
 						op.IndexB = b.Index
+						break
 					}
 				}
 			} else {
