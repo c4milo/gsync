@@ -1,4 +1,4 @@
-package rsync
+package gsync
 
 import (
 	"bytes"

@@ -1,5 +1,5 @@
 // Package gsync implements a rsync-based algorithm for sending delta updates to a remote server.
-package rsync
+package gsync
 
 const (
 	// DefaultBlockSize is the default block size.
