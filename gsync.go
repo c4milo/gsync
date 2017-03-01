@@ -3,7 +3,7 @@ package gsync
 
 const (
 	// DefaultBlockSize is the default block size.
-	DefaultBlockSize = 1 << 17 // 128kb
+	DefaultBlockSize = 6 * 1024 // 6kb
 )
 
 // Rolling checksum is up to 16 bit length for simplicity and speed.
