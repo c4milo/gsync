@@ -3,7 +3,7 @@ package gsync
 
 const (
 	// DefaultBlockSize is the default block size.
-	DefaultBlockSize = 1024 * 6
+	DefaultBlockSize = 1 << 17 // 128kb
 )
 
 // Rolling checksum is up to 16 bit length for simplicity and speed.
@@ -40,10 +40,8 @@ type BlockChecksum struct {
 
 // BlockOperation represents a file re-construction instruction.
 type BlockOperation struct {
-	// Index is the block index in the source file.
+	// Index is the block index involved.
 	Index uint64
-	// IndexB is the block index to copy from the remote file, avoiding unnecessary network transmission.
-	IndexB uint64
 	// Data is the delta to be applied to the remote file. No data means
 	// the client found a matching checksum for this block, which means that the remote end proceeds to
 	// copy the block data from its local copy instead.
