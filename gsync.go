@@ -15,7 +15,7 @@ const (
 	mod = 1 << 16
 )
 
-// rollingHash as defined in https://www.samba.org/~tridge/phd_thesis.pdf
+// rollingHash as defined in https://www.samba.org/~tridge/phd_thesis.pdf, based on Adler-32
 func rollingHash(block []byte) uint32 {
 	var a, b uint32
 	l := len(block) - 1
