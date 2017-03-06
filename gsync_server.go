@@ -7,7 +7,6 @@ package gsync
 import (
 	"context"
 	"crypto/md5"
-	"fmt"
 	"hash"
 	"io"
 
@@ -83,6 +82,8 @@ func Checksums(ctx context.Context, r io.Reader, shash hash.Hash) (<-chan BlockC
 
 // Apply reconstructs a file given a set of operations. The caller must close the ops channel or the context when done or there will be a deadlock.
 func Apply(ctx context.Context, dst io.Writer, cache io.ReaderAt, ops <-chan BlockOperation) error {
+	buffer := make([]byte, DefaultBlockSize)
+
 	for o := range ops {
 		// Allows for cancellation.
 		select {
@@ -103,20 +104,14 @@ func Apply(ctx context.Context, dst io.Writer, cache io.ReaderAt, ops <-chan Blo
 		if len(o.Data) > 0 {
 			block = o.Data
 		} else {
-			buffer := make([]byte, DefaultBlockSize)
 			n, err := cache.ReadAt(buffer, (index * DefaultBlockSize))
 			if err != nil && err != io.EOF {
 				return errors.Wrapf(err, "failed reading cached block")
 			}
 
-			if err != nil {
-				fmt.Printf("warn: %#v", err)
-			}
-
 			block = buffer[:n]
 		}
 
-		//fmt.Printf("\napply: %s\n", string(o.Data[:]))
 		_, err := dst.Write(block)
 		if err != nil {
 			return errors.Wrapf(err, "failed writing block to destination")
