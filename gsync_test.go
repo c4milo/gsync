@@ -35,7 +35,7 @@ func TestSync(t *testing.T) {
 		desc   string
 		source []byte
 		cache  []byte
-		sum    hash.Hash
+		h      hash.Hash
 	}{
 		{
 			"full sync, no cache, 2mb file",
@@ -64,7 +64,7 @@ func TestSync(t *testing.T) {
 			// fmt.Printf("cache len: %d bytes\n", len(tt.cache))
 
 			fmt.Print("Checksum... ")
-			sumsCh, err := Checksums(ctx, bytes.NewReader(tt.cache), tt.sum)
+			sumsCh, err := Checksums(ctx, bytes.NewReader(tt.cache), tt.h)
 			assert.Ok(t, err)
 			fmt.Println("done")
 
@@ -74,7 +74,7 @@ func TestSync(t *testing.T) {
 			fmt.Printf("%d blocks found in cache. done\n", len(cacheSums))
 
 			fmt.Print("Sync... ")
-			opsCh, err := Sync(ctx, bytes.NewReader(tt.source), tt.sum, cacheSums)
+			opsCh, err := Sync(ctx, bytes.NewReader(tt.source), tt.h, cacheSums)
 			assert.Ok(t, err)
 			fmt.Println("done")
 
@@ -95,12 +95,6 @@ func TestSync(t *testing.T) {
 		})
 	}
 }
-
-// Benchmarks using buffered channels.
-func BenchmarkBufferedChannel(b *testing.B) {}
-
-// Benchmarks using unbuffered channels.
-func BenchmarkUnbufferedChannel(b *testing.B) {}
 
 func Benchmark6kbBlockSize(b *testing.B)    {}
 func Benchmark128kbBlockSize(b *testing.B)  {}

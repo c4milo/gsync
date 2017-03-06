@@ -15,7 +15,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// LookUpTable returns a map with all the block checksums returned by the remote server for a given file being synchronized.
+// LookUpTable reads up block checksums and builds a lookup table for the client to search from when trying to decide
+// wether to send or not a block of data.
 func LookUpTable(ctx context.Context, bc <-chan BlockChecksum) (map[uint32][]BlockChecksum, error) {
 	table := make(map[uint32][]BlockChecksum)
 	for c := range bc {
