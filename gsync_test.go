@@ -60,9 +60,6 @@ func TestSync(t *testing.T) {
 				assert.Equals(t, tt.source[:len(tt.cache)], tt.cache)
 			}
 
-			// fmt.Printf("source len: %d bytes\n", len(tt.source))
-			// fmt.Printf("cache len: %d bytes\n", len(tt.cache))
-
 			fmt.Print("Checksum... ")
 			sumsCh, err := Checksums(ctx, bytes.NewReader(tt.cache), tt.h)
 			assert.Ok(t, err)

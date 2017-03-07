@@ -28,7 +28,7 @@ func LookUpTable(ctx context.Context, bc <-chan BlockChecksum) (map[uint32][]Blo
 		}
 
 		if c.Error != nil {
-			fmt.Printf("warn: checksum error: %#v\n", c.Error)
+			fmt.Printf("gsync: checksum error: %#v\n", c.Error)
 			continue
 		}
 		table[c.Weak] = append(table[c.Weak], c)
@@ -59,7 +59,6 @@ func Sync(ctx context.Context, r io.Reader, shash hash.Hash, remote map[uint32][
 		// Read the file, see if there are content matches against remote blocks and send literal or data operation in order to help to reconstruct
 		// the file in the remote end.
 		for {
-
 			// Allow for cancellation.
 			select {
 			case <-ctx.Done():
@@ -78,9 +77,6 @@ func Sync(ctx context.Context, r io.Reader, shash hash.Hash, remote map[uint32][
 			if err == io.EOF {
 				break
 			}
-
-			// fmt.Printf("%d bytes read from source: %#v\n", n, err)
-			// fmt.Printf("len(p): %d\n", len(buffer))
 
 			if err != nil {
 				o <- BlockOperation{
