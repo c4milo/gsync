@@ -107,7 +107,6 @@ func Sync(ctx context.Context, r io.Reader, shash hash.Hash, remote map[uint32][
 					}
 				}
 			} else {
-				//fmt.Printf("\nsync: %s\n", block)
 				op.Data = block
 			}
 

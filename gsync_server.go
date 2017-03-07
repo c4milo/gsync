@@ -62,11 +62,12 @@ func Checksums(ctx context.Context, r io.Reader, shash hash.Hash) (<-chan BlockC
 				// let the caller decide whether to interrupt the process or not.
 				continue
 			}
-			shash.Reset()
 
 			block := buffer[:n]
+			shash.Reset()
+			shash.Write(block)
+			strong := shash.Sum(nil)
 			weak := rollingHash(block)
-			strong := shash.Sum(block)
 
 			c <- BlockChecksum{
 				Index:  index,
