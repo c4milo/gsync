@@ -6,7 +6,7 @@ package gsync
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/sha256"
 	"hash"
 	"io"
 
@@ -28,7 +28,7 @@ func Checksums(ctx context.Context, r io.Reader, shash hash.Hash) (<-chan BlockC
 	}
 
 	if shash == nil {
-		shash = md5.New()
+		shash = sha256.New()
 	}
 
 	go func() {

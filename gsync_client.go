@@ -7,7 +7,7 @@ package gsync
 import (
 	"bytes"
 	"context"
-	"crypto/md5"
+	"crypto/sha256"
 	"fmt"
 	"hash"
 	"io"
@@ -51,7 +51,7 @@ func Sync(ctx context.Context, r io.Reader, shash hash.Hash, remote map[uint32][
 	}
 
 	if shash == nil {
-		shash = md5.New()
+		shash = sha256.New()
 	}
 
 	go func() {
