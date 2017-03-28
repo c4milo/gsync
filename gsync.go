@@ -30,11 +30,11 @@ func rollingHash(block []byte) uint32 {
 	return r
 }
 
-// BlockChecksum contains file block checksums as specified in rsync thesis.
-type BlockChecksum struct {
+// BlockSignature contains file block checksums as specified in rsync thesis.
+type BlockSignature struct {
 	// Index is the block index
 	Index uint64
-	// Strong refers to the expensive checksum, for our implementation it is murmur3.
+	// Strong refers to the strong checksum, it need not to be cryptographic.
 	Strong []byte
 	// Weak refers to the fast rsync rolling checksum
 	Weak uint32

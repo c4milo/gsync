@@ -15,10 +15,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-// LookUpTable reads up block checksums and builds a lookup table for the client to search from when trying to decide
+// LookUpTable reads up blocks signatures and builds a lookup table for the client to search from when trying to decide
 // wether to send or not a block of data.
-func LookUpTable(ctx context.Context, bc <-chan BlockChecksum) (map[uint32][]BlockChecksum, error) {
-	table := make(map[uint32][]BlockChecksum)
+func LookUpTable(ctx context.Context, bc <-chan BlockSignature) (map[uint32][]BlockSignature, error) {
+	table := make(map[uint32][]BlockSignature)
 	for c := range bc {
 		select {
 		case <-ctx.Done():
@@ -41,7 +41,7 @@ func LookUpTable(ctx context.Context, bc <-chan BlockChecksum) (map[uint32][]Blo
 // data or literals is determined by the remote checksums provided by the caller.
 // This function does not block and returns immediately. Also, the remote map is accessed without a mutex.
 // The caller must make sure the concrete reader instance is not nil or this function will panic.
-func Sync(ctx context.Context, r io.Reader, shash hash.Hash, remote map[uint32][]BlockChecksum) (<-chan BlockOperation, error) {
+func Sync(ctx context.Context, r io.Reader, shash hash.Hash, remote map[uint32][]BlockSignature) (<-chan BlockOperation, error) {
 	var index uint64
 	o := make(chan BlockOperation)
 

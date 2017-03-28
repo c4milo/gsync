@@ -13,14 +13,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Checksums reads data blocks from reader and pipes out block checksums on the
+// Checksums reads data blocks from reader and pipes out block signatures on the
 // returning channel, closing it when done reading or when the context is cancelled.
 // This function does not block and returns immediately. The caller must make sure the concrete
 // reader instance is not nil or this function will panic.
-func Checksums(ctx context.Context, r io.Reader, shash hash.Hash) (<-chan BlockChecksum, error) {
+func Checksums(ctx context.Context, r io.Reader, shash hash.Hash) (<-chan BlockSignature, error) {
 	var index uint64
 	buffer := make([]byte, DefaultBlockSize)
-	c := make(chan BlockChecksum)
+	c := make(chan BlockSignature)
 
 	if r == nil {
 		close(c)
@@ -38,7 +38,7 @@ func Checksums(ctx context.Context, r io.Reader, shash hash.Hash) (<-chan BlockC
 			// Allow for cancellation
 			select {
 			case <-ctx.Done():
-				c <- BlockChecksum{
+				c <- BlockSignature{
 					Index: index,
 					Error: ctx.Err(),
 				}
@@ -54,7 +54,7 @@ func Checksums(ctx context.Context, r io.Reader, shash hash.Hash) (<-chan BlockC
 			}
 
 			if err != nil {
-				c <- BlockChecksum{
+				c <- BlockSignature{
 					Index: index,
 					Error: errors.Wrapf(err, "failed reading block"),
 				}
@@ -69,7 +69,7 @@ func Checksums(ctx context.Context, r io.Reader, shash hash.Hash) (<-chan BlockC
 			strong := shash.Sum(nil)
 			weak := rollingHash(block)
 
-			c <- BlockChecksum{
+			c <- BlockSignature{
 				Index:  index,
 				Weak:   weak,
 				Strong: strong,
