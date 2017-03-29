@@ -13,11 +13,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Checksums reads data blocks from reader and pipes out block signatures on the
+// Signatures reads data blocks from reader and pipes out block signatures on the
 // returning channel, closing it when done reading or when the context is cancelled.
 // This function does not block and returns immediately. The caller must make sure the concrete
 // reader instance is not nil or this function will panic.
-func Checksums(ctx context.Context, r io.Reader, shash hash.Hash) (<-chan BlockSignature, error) {
+func Signatures(ctx context.Context, r io.Reader, shash hash.Hash) (<-chan BlockSignature, error) {
 	var index uint64
 	buffer := make([]byte, DefaultBlockSize)
 	c := make(chan BlockSignature)

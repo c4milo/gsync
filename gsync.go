@@ -30,7 +30,7 @@ func rollingHash(block []byte) uint32 {
 	return r
 }
 
-// BlockSignature contains file block checksums as specified in rsync thesis.
+// BlockSignature contains file block index and checksums.
 type BlockSignature struct {
 	// Index is the block index
 	Index uint64

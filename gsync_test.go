@@ -60,18 +60,18 @@ func TestSync(t *testing.T) {
 				assert.Equals(t, tt.source[:len(tt.cache)], tt.cache)
 			}
 
-			fmt.Print("Checksum... ")
-			sumsCh, err := Checksums(ctx, bytes.NewReader(tt.cache), tt.h)
+			fmt.Print("Signatures... ")
+			sigsCh, err := Signatures(ctx, bytes.NewReader(tt.cache), tt.h)
 			assert.Ok(t, err)
 			fmt.Println("done")
 
 			fmt.Print("LookUpTable... ")
-			cacheSums, err := LookUpTable(ctx, sumsCh)
+			cacheSigs, err := LookUpTable(ctx, sigsCh)
 			assert.Ok(t, err)
-			fmt.Printf("%d blocks found in cache. done\n", len(cacheSums))
+			fmt.Printf("%d blocks found in cache. done\n", len(cacheSigs))
 
 			fmt.Print("Sync... ")
-			opsCh, err := Sync(ctx, bytes.NewReader(tt.source), tt.h, cacheSums)
+			opsCh, err := Sync(ctx, bytes.NewReader(tt.source), tt.h, cacheSigs)
 			assert.Ok(t, err)
 			fmt.Println("done")
 
