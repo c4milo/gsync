@@ -21,7 +21,7 @@ func rollingHash(block []byte) uint32 {
 	l := len(block) - 1
 	for i, k := range block {
 		a += uint32(k)
-		b += (uint32(l) - uint32(i) + 1) * uint32(k)
+		b += (uint32(l) - uint32(i)) * uint32(k)
 	}
 	r1 := a % mod
 	r2 := b % mod
