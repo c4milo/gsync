@@ -95,6 +95,7 @@ func Sync(ctx context.Context, r io.Reader, shash hash.Hash, remote map[uint32][
 				shash.Reset()
 				shash.Write(block)
 				s := shash.Sum(nil)
+
 				for _, b := range bs {
 					if bytes.Equal(s, b.Strong) {
 						// instructs the remote end to copy block data at offset b.Index
