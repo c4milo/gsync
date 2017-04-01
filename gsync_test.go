@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/hooklift/assert"
+	"github.com/pkg/profile"
 )
 
 var alpha = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789\n"
@@ -31,6 +32,7 @@ func srand(seed int64, size int) []byte {
 }
 
 func TestSync(t *testing.T) {
+	defer profile.Start().Stop()
 	tests := []struct {
 		desc   string
 		source []byte
@@ -53,7 +55,7 @@ func TestSync(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
 
 			if len(tt.cache) > 0 {
@@ -82,7 +84,6 @@ func TestSync(t *testing.T) {
 			fmt.Println("done")
 
 			assert.Cond(t, target.Len() != 0, "target file should not be empty")
-			assert.Equals(t, len(tt.source), target.Len())
 			if !bytes.Equal(tt.source, target.Bytes()) {
 				ioutil.WriteFile("source.txt", tt.source, 0640)
 				ioutil.WriteFile("cache.txt", tt.cache, 0640)

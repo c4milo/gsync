@@ -37,33 +37,41 @@ func LookUpTable(ctx context.Context, bc <-chan BlockSignature) (map[uint32][]Bl
 	return table, nil
 }
 
-// Sync sends file deltas or literals to the caller in order to efficiently re-construct a remote file. Whether to send
-// data or literals is determined by the remote checksums provided by the caller.
-// This function does not block and returns immediately. Also, the remote map is accessed without a mutex.
+// Sync sends tokens or literal bytes to the caller in order to efficiently re-construct a remote file. Whether to send
+// tokens or literals is determined by the remote checksums provided by the caller.
+// This function does not block and returns immediately. Also, the remote blocks map is accessed without a mutex,
+// so this function is expected to be called once the remote blocks map is fully populated.
+//
 // The caller must make sure the concrete reader instance is not nil or this function will panic.
-func Sync(ctx context.Context, r io.Reader, shash hash.Hash, remote map[uint32][]BlockSignature) (<-chan BlockOperation, error) {
-	var index uint64
-	o := make(chan BlockOperation)
+func Sync(ctx context.Context, r io.ReaderAt, shash hash.Hash, remote map[uint32][]BlockSignature) (<-chan BlockOperation, error) {
+	var currentOffset, lastMatchOffset int
+
+	// newData determines whether there were local changes that need to be synced up with the server.
+	newData := false
 
 	if r == nil {
-		close(o)
 		return nil, errors.New("gsync: reader required")
 	}
+
+	o := make(chan BlockOperation)
 
 	if shash == nil {
 		shash = sha256.New()
 	}
 
 	go func() {
-		defer close(o)
-		// Read the file, see if there are content matches against remote blocks and send literal or data operation in order to help to reconstruct
-		// the file in the remote end.
+		index := 1
+
+		defer func() {
+			close(o)
+			fmt.Printf("Blocks restored from cache: %d\n", index)
+		}()
+
 		for {
 			// Allow for cancellation.
 			select {
 			case <-ctx.Done():
 				o <- BlockOperation{
-					Index: index,
 					Error: ctx.Err(),
 				}
 				return
@@ -73,45 +81,126 @@ func Sync(ctx context.Context, r io.Reader, shash hash.Hash, remote map[uint32][
 			}
 
 			buffer := make([]byte, DefaultBlockSize)
-			n, err := r.Read(buffer)
-			if err == io.EOF {
-				break
-			}
 
-			if err != nil {
+			n, err := r.ReadAt(buffer, int64(currentOffset))
+			if err != nil && err != io.EOF {
 				o <- BlockOperation{
-					Index: index,
-					Error: errors.Wrapf(err, "failed reading block"),
+					Error: errors.Wrapf(err, "failed reading data block"),
 				}
 				// return since data corruption in the server is possible and a re-sync is required.
 				return
 			}
 
 			block := buffer[:n]
+			if len(remote) == 0 {
+				o <- BlockOperation{Data: block}
+				currentOffset += n
+
+				if err == io.EOF {
+					return
+				}
+				continue
+			}
+
 			weak := rollingHash(block)
 
-			op := BlockOperation{Index: index}
 			if bs, ok := remote[weak]; ok {
 				shash.Reset()
 				shash.Write(block)
 				s := shash.Sum(nil)
 
+				matchFound := false
+
 				for _, b := range bs {
-					if bytes.Equal(s, b.Strong) {
-						// instructs the remote end to copy block data at offset b.Index
-						// from remote file.
-						op.Index = b.Index
+					// Allow for cancellation.
+					select {
+					case <-ctx.Done():
+						o <- BlockOperation{
+							Error: ctx.Err(),
+						}
+						return
+					default:
+						// break out of the select block and continue reading
 						break
 					}
+
+					if !bytes.Equal(s, b.Strong) {
+						continue
+					}
+
+					matchFound = true
+					// When a match is found, sends the data between the current file
+					// offset and the end of the previous match
+					if newData {
+						sendData(ctx, r, o, currentOffset, lastMatchOffset)
+						newData = false
+					}
+
+					// If a match is found, the search is restarted at the end of the matched block.
+					currentOffset += len(block)
+
+					// Keep track of the last match offset
+					lastMatchOffset = currentOffset
+
+					// instructs the remote end to copy block data at offset b.Index
+					// from remote file.
+					o <- BlockOperation{Index: b.Index}
+					index++
+
+					break
+				} // ends for-loop for 2nd level signature search
+
+				if !matchFound {
+					newData = true
+					currentOffset++
 				}
 			} else {
-				op.Data = block
+				newData = true
+				currentOffset++
 			}
 
-			o <- op
-			index++
-		}
+			if err == io.EOF {
+				if newData {
+					sendData(ctx, r, o, currentOffset, lastMatchOffset)
+				}
+				return
+			}
+		} // ends main for-loop reading the file
 	}()
 
 	return o, nil
+}
+
+func sendData(ctx context.Context, r io.ReaderAt, o chan<- BlockOperation, currentOffset, lastMatchOffset int) {
+	offset := lastMatchOffset
+	for {
+		// Allow for cancellation.
+		select {
+		case <-ctx.Done():
+			o <- BlockOperation{
+				Error: ctx.Err(),
+			}
+			return
+		default:
+			// break out of the select block and continue reading
+			break
+		}
+
+		buffer := make([]byte, DefaultBlockSize)
+		n, err := r.ReadAt(buffer, int64(offset))
+		if err != nil && err != io.EOF {
+			o <- BlockOperation{
+				Error: errors.Wrapf(err, "failed reading data block"),
+			}
+			return
+		}
+
+		o <- BlockOperation{Data: buffer[:n]}
+
+		if err == io.EOF {
+			break
+		}
+
+		offset += n
+	}
 }
