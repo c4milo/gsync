@@ -67,11 +67,11 @@ func Signatures(ctx context.Context, r io.Reader, shash hash.Hash) (<-chan Block
 			shash.Reset()
 			shash.Write(block)
 			strong := shash.Sum(nil)
-			weak := rollingHash(block)
+			_, _, rhash := rollingHash(block)
 
 			c <- BlockSignature{
 				Index:  index,
-				Weak:   weak,
+				Weak:   rhash,
 				Strong: strong,
 			}
 			index++
