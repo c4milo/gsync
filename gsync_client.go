@@ -48,6 +48,8 @@ func Sync(ctx context.Context, r io.ReaderAt, shash hash.Hash, remote map[uint32
 
 	// newData determines whether there were local changes that need to be synced up with the server.
 	newData := false
+	// fullRHash determines whether a rolling checksum from an entire block must be done.
+	fullRHash := true
 
 	if r == nil {
 		return nil, errors.New("gsync: reader required")
@@ -67,6 +69,8 @@ func Sync(ctx context.Context, r io.ReaderAt, shash hash.Hash, remote map[uint32
 			fmt.Printf("Blocks restored from cache: %d\n", index)
 		}()
 
+		// Initializes variables to incrementally calculate rolling hash
+		var r1, r2, rhash, lastByteOffsetValue uint32
 		for {
 			// Allow for cancellation.
 			select {
@@ -81,7 +85,6 @@ func Sync(ctx context.Context, r io.ReaderAt, shash hash.Hash, remote map[uint32
 			}
 
 			buffer := make([]byte, DefaultBlockSize)
-
 			n, err := r.ReadAt(buffer, int64(currentOffset))
 			if err != nil && err != io.EOF {
 				o <- BlockOperation{
@@ -102,9 +105,14 @@ func Sync(ctx context.Context, r io.ReaderAt, shash hash.Hash, remote map[uint32
 				continue
 			}
 
-			weak := rollingHash(block)
+			if fullRHash {
+				r1, r2, rhash = rollingHash(block)
+				fullRHash = false
+			} else {
+				r1, r2, rhash = rollingHash2(block, r1, r2, lastByteOffsetValue)
+			}
 
-			if bs, ok := remote[weak]; ok {
+			if bs, ok := remote[rhash]; ok {
 				shash.Reset()
 				shash.Write(block)
 				s := shash.Sum(nil)
@@ -129,6 +137,8 @@ func Sync(ctx context.Context, r io.ReaderAt, shash hash.Hash, remote map[uint32
 					}
 
 					matchFound = true
+					fullRHash = true
+
 					// When a match is found, sends the data between the current file
 					// offset and the end of the previous match
 					if newData {
@@ -142,6 +152,9 @@ func Sync(ctx context.Context, r io.ReaderAt, shash hash.Hash, remote map[uint32
 					// Keep track of the last match offset
 					lastMatchOffset = currentOffset
 
+					// Keep track of the last byte offset value for use in incremental rolling checksum
+					lastByteOffsetValue = uint32(block[0])
+
 					// instructs the remote end to copy block data at offset b.Index
 					// from remote file.
 					o <- BlockOperation{Index: b.Index}
@@ -152,10 +165,12 @@ func Sync(ctx context.Context, r io.ReaderAt, shash hash.Hash, remote map[uint32
 
 				if !matchFound {
 					newData = true
+					lastByteOffsetValue = uint32(block[0])
 					currentOffset++
 				}
 			} else {
 				newData = true
+				lastByteOffsetValue = uint32(block[0])
 				currentOffset++
 			}
 
