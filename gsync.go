@@ -16,18 +16,29 @@ const (
 )
 
 // rollingHash as defined in https://www.samba.org/~tridge/phd_thesis.pdf, based on Adler-32
-func rollingHash(block []byte) uint32 {
+func rollingHash(block []byte) (uint32, uint32, uint32) {
 	var a, b uint32
-	l := len(block) - 1
+	l := uint32(len(block) - 1)
 	for i, k := range block {
 		a += uint32(k)
-		b += (uint32(l) - uint32(i)) * uint32(k)
+		b += (l - uint32(i)) * uint32(k)
 	}
 	r1 := a % mod
 	r2 := b % mod
 	r := r1 + (mod * r2)
 
-	return r
+	return r1, r2, r
+}
+
+func rollingHash2(block []byte, r1, r2, old uint32) (uint32, uint32, uint32) {
+	l := uint32(len(block))
+	new := uint32(block[l-1])
+
+	r1 = (r1 - old + new) % mod
+	r2 = (r2 - (l * old) + r1) % mod
+	r := r1 + (mod * r2)
+
+	return r1, r2, r
 }
 
 // BlockSignature contains file block index and checksums.
