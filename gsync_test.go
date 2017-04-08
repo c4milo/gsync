@@ -49,8 +49,12 @@ func TestRollingHash(t *testing.T) {
 			rolling = false
 			old, r, r1, r2 = 0, 0, 0, 0
 			offset += int64(n)
+
+			if err == io.EOF {
+				break
+			}
 		} else {
-			// If EOF and we didn't get a hash match, we copy all read data into
+			// If EOF is reached and we didn't get a hash match, we copy all read data into
 			// delta slice in order to not lose data at the end of the buffer.
 			if err == io.EOF {
 				for _, k := range block {
@@ -65,13 +69,9 @@ func TestRollingHash(t *testing.T) {
 			offset++
 		}
 
-		if err == io.EOF {
-			break
-		}
 		assert.Ok(t, err)
 	}
 
-	//assert.Equals(t, target, r)
 	assert.Equals(t, []byte("aabb"), delta)
 }
 
