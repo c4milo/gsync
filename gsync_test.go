@@ -10,6 +10,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"hash"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"testing"
@@ -18,6 +19,50 @@ import (
 	"github.com/hooklift/assert"
 	"github.com/pkg/profile"
 )
+
+// TestRollingHash tests that incrementally calcuted signatures arrive to the same
+// value as the full block signature.
+func TestRollingHash(t *testing.T) {
+	_, _, target := rollingHash([]byte("abcd")) // file's content in server
+	reader := bytes.NewReader([]byte("aaabcd")) // new file's content in client
+
+	var (
+		r1, r2, r, old uint32
+		offset         int64
+		rolling        bool
+	)
+
+	delta := make([]byte, 0, 2)
+	for {
+		buffer := make([]byte, 4)
+		n, err := reader.ReadAt(buffer, offset)
+
+		block := buffer[:n]
+		if rolling {
+			new := uint32(block[n-1])
+			r1, r2, r = rollingHash2(uint32(n), r1, r2, old, new)
+		} else {
+			r1, r2, r = rollingHash(block)
+		}
+
+		if r == target {
+			break
+		} else {
+			rolling = true
+			old = uint32(block[0])
+			delta = append(delta, block[0])
+			offset++
+		}
+
+		if err == io.EOF {
+			break
+		}
+		assert.Ok(t, err)
+	}
+
+	assert.Equals(t, target, r)
+	assert.Equals(t, []byte("aa"), delta)
+}
 
 var alpha = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789\n"
 
