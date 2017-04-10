@@ -44,13 +44,6 @@ func LookUpTable(ctx context.Context, bc <-chan BlockSignature) (map[uint32][]Bl
 //
 // The caller must make sure the concrete reader instance is not nil or this function will panic.
 func Sync(ctx context.Context, r io.ReaderAt, shash hash.Hash, remote map[uint32][]BlockSignature) (<-chan BlockOperation, error) {
-	var currentOffset, lastMatchOffset int
-
-	// newData determines whether there were local changes that need to be synced up with the server.
-	newData := false
-	// fullRHash determines whether a rolling checksum from an entire block must be done.
-	fullRHash := true
-
 	if r == nil {
 		return nil, errors.New("gsync: reader required")
 	}
@@ -62,15 +55,18 @@ func Sync(ctx context.Context, r io.ReaderAt, shash hash.Hash, remote map[uint32
 	}
 
 	go func() {
-		index := 1
+		var (
+			r1, r2, rhash, old uint32
+			offset             int64
+			rolling, match     bool
+		)
+
+		delta := make([]byte, 0)
 
 		defer func() {
 			close(o)
-			fmt.Printf("Blocks restored from cache: %d\n", index)
 		}()
 
-		// Initializes variables to incrementally calculate rolling hash
-		var r1, r2, rhash, lastByteOffsetValue uint32
 		for {
 			// Allow for cancellation.
 			select {
@@ -80,12 +76,12 @@ func Sync(ctx context.Context, r io.ReaderAt, shash hash.Hash, remote map[uint32
 				}
 				return
 			default:
-				// break out of the select block and continue reading
 				break
 			}
 
 			buffer := make([]byte, DefaultBlockSize)
-			n, err := r.ReadAt(buffer, int64(currentOffset))
+
+			n, err := r.ReadAt(buffer, offset)
 			if err != nil && err != io.EOF {
 				o <- BlockOperation{
 					Error: errors.Wrapf(err, "failed reading data block"),
@@ -95,9 +91,11 @@ func Sync(ctx context.Context, r io.ReaderAt, shash hash.Hash, remote map[uint32
 			}
 
 			block := buffer[:n]
+
+			// If there are no block signatures from remote server, send all data blocks
 			if len(remote) == 0 {
 				o <- BlockOperation{Data: block}
-				currentOffset += n
+				offset += int64(n)
 
 				if err == io.EOF {
 					return
@@ -105,11 +103,11 @@ func Sync(ctx context.Context, r io.ReaderAt, shash hash.Hash, remote map[uint32
 				continue
 			}
 
-			if fullRHash {
-				r1, r2, rhash = rollingHash(block)
-				fullRHash = false
+			if rolling {
+				new := uint32(block[n-1])
+				r1, r2, rhash = rollingHash2(uint32(n), r1, r2, old, new)
 			} else {
-				r1, r2, rhash = rollingHash2(block, r1, r2, lastByteOffsetValue)
+				r1, r2, rhash = rollingHash(block)
 			}
 
 			if bs, ok := remote[rhash]; ok {
@@ -117,77 +115,60 @@ func Sync(ctx context.Context, r io.ReaderAt, shash hash.Hash, remote map[uint32
 				shash.Write(block)
 				s := shash.Sum(nil)
 
-				matchFound := false
-
 				for _, b := range bs {
-					// Allow for cancellation.
-					select {
-					case <-ctx.Done():
-						o <- BlockOperation{
-							Error: ctx.Err(),
-						}
-						return
-					default:
-						// break out of the select block and continue reading
-						break
-					}
-
 					if !bytes.Equal(s, b.Strong) {
 						continue
 					}
 
-					matchFound = true
-					fullRHash = true
+					match = true
 
-					// When a match is found, sends the data between the current file
-					// offset and the end of the previous match
-					if newData {
-						sendData(ctx, r, o, currentOffset, lastMatchOffset)
-						newData = false
+					if len(delta) > 0 {
+						send(ctx, bytes.NewReader(delta), o)
+						delta = make([]byte, 0)
 					}
-
-					// If a match is found, the search is restarted at the end of the matched block.
-					currentOffset += len(block)
-
-					// Keep track of the last match offset
-					lastMatchOffset = currentOffset
-
-					// Keep track of the last byte offset value for use in incremental rolling checksum
-					lastByteOffsetValue = uint32(block[0])
 
 					// instructs the remote end to copy block data at offset b.Index
 					// from remote file.
 					o <- BlockOperation{Index: b.Index}
-					index++
+					break
+				}
+			}
+
+			if match {
+				if err == io.EOF {
+					break
+				}
+				match = false
+				old, rhash, r1, r2, rolling = 0, 0, 0, 0, false
+				offset += int64(n)
+			} else {
+				// If EOF is reached and we didn't get a block hash match, we copy all read data into
+				// delta slice in order to not lose the deltas at the end of the file.
+				if err == io.EOF {
+					for _, k := range block {
+						delta = append(delta, k)
+					}
+
+					if len(delta) > 0 {
+						send(ctx, bytes.NewReader(delta), o)
+					}
 
 					break
-				} // ends for-loop for 2nd level signature search
-
-				if !matchFound {
-					newData = true
-					lastByteOffsetValue = uint32(block[0])
-					currentOffset++
 				}
-			} else {
-				newData = true
-				lastByteOffsetValue = uint32(block[0])
-				currentOffset++
+				rolling = true
+				old = uint32(block[0])
+				delta = append(delta, block[0])
+				offset++
 			}
-
-			if err == io.EOF {
-				if newData {
-					sendData(ctx, r, o, currentOffset, lastMatchOffset)
-				}
-				return
-			}
-		} // ends main for-loop reading the file
+		}
 	}()
 
 	return o, nil
 }
 
-func sendData(ctx context.Context, r io.ReaderAt, o chan<- BlockOperation, currentOffset, lastMatchOffset int) {
-	offset := lastMatchOffset
+// send sends all deltas over the channel. Any error is reported back using the
+// same channel.
+func send(ctx context.Context, r io.Reader, o chan<- BlockOperation) {
 	for {
 		// Allow for cancellation.
 		select {
@@ -202,7 +183,8 @@ func sendData(ctx context.Context, r io.ReaderAt, o chan<- BlockOperation, curre
 		}
 
 		buffer := make([]byte, DefaultBlockSize)
-		n, err := r.ReadAt(buffer, int64(offset))
+
+		n, err := r.Read(buffer)
 		if err != nil && err != io.EOF {
 			o <- BlockOperation{
 				Error: errors.Wrapf(err, "failed reading data block"),
@@ -215,7 +197,5 @@ func sendData(ctx context.Context, r io.ReaderAt, o chan<- BlockOperation, curre
 		if err == io.EOF {
 			break
 		}
-
-		offset += n
 	}
 }
