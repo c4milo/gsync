@@ -23,8 +23,8 @@ import (
 // TestRollingHash tests that incrementally calculated signatures arrive to the same
 // value as the full block signature.
 func TestRollingHash(t *testing.T) {
-	_, _, target := rollingHash([]byte("abcd"))       // file's content in server
-	reader := bytes.NewReader([]byte("aaabcdbbabcd")) // new file's content in client
+	_, _, target := rollingHash([]byte("abcd"))          // file's content in server
+	reader := bytes.NewReader([]byte("aaabcdbbabcdddf")) // new file's content in client
 
 	var (
 		r1, r2, r, old uint32
@@ -54,12 +54,10 @@ func TestRollingHash(t *testing.T) {
 			old, r, r1, r2 = 0, 0, 0, 0
 			offset += int64(n)
 		} else {
-			// If EOF is reached and we didn't get a hash match, we copy all read data into
-			// delta slice in order to not lose the data at the end of the buffer.
 			if err == io.EOF {
-				for _, k := range block {
-					delta = append(delta, k)
-				}
+				// If EOF is reached and not match data found, we need to add trailing data
+				// to delta array.
+				delta = append(delta, block...)
 				break
 			}
 
@@ -72,7 +70,7 @@ func TestRollingHash(t *testing.T) {
 		assert.Ok(t, err)
 	}
 
-	assert.Equals(t, []byte("aabb"), delta)
+	assert.Equals(t, []byte("aabbddf"), delta)
 }
 
 var alpha = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789\n"
@@ -102,9 +100,9 @@ func TestSync(t *testing.T) {
 			md5.New(),
 		},
 		{
-			"partial sync, 2mb cache, 5mb file",
-			srand(20, (5*1024)*1024),
+			"partial sync, 1mb cached, 2mb file",
 			srand(20, (2*1024)*1024),
+			srand(20, (1*1024)*1024),
 			md5.New(),
 		},
 	}

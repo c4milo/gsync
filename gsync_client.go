@@ -122,13 +122,14 @@ func Sync(ctx context.Context, r io.ReaderAt, shash hash.Hash, remote map[uint32
 
 					match = true
 
+					// We need to send deltas before sending a index token.
 					if len(delta) > 0 {
 						send(ctx, bytes.NewReader(delta), o)
 						delta = make([]byte, 0)
 					}
 
-					// instructs the remote end to copy block data at offset b.Index
-					// from remote file.
+					// instructs the server to copy block data at offset b.Index
+					// from its own copy of the file.
 					o <- BlockOperation{Index: b.Index}
 					break
 				}
@@ -138,17 +139,15 @@ func Sync(ctx context.Context, r io.ReaderAt, shash hash.Hash, remote map[uint32
 				if err == io.EOF {
 					break
 				}
-				match = false
-				old, rhash, r1, r2, rolling = 0, 0, 0, 0, false
+
+				rolling, match = false, false
+				old, rhash, r1, r2 = 0, 0, 0, 0
 				offset += int64(n)
 			} else {
-				// If EOF is reached and we didn't get a block hash match, we copy all read data into
-				// delta slice in order to not lose the deltas at the end of the file.
 				if err == io.EOF {
-					for _, k := range block {
-						delta = append(delta, k)
-					}
-
+					// If EOF is reached and not match data found, we add trailing data
+					// to delta array.
+					delta = append(delta, block...)
 					if len(delta) > 0 {
 						send(ctx, bytes.NewReader(delta), o)
 					}
@@ -192,7 +191,12 @@ func send(ctx context.Context, r io.Reader, o chan<- BlockOperation) {
 			return
 		}
 
-		o <- BlockOperation{Data: buffer[:n]}
+		// If we don't guard against 0 bytes reads, an operation with index 0 will be sent
+		// and the server will duplicate block 0 at the end of the reconstructed file.
+		if n > 0 {
+			block := buffer[:n]
+			o <- BlockOperation{Data: block}
+		}
 
 		if err == io.EOF {
 			break
