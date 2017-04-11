@@ -122,7 +122,7 @@ func Sync(ctx context.Context, r io.ReaderAt, shash hash.Hash, remote map[uint32
 
 					match = true
 
-					// We need to send deltas before sending a index token.
+					// We need to send deltas before sending an index token.
 					if len(delta) > 0 {
 						send(ctx, bytes.NewReader(delta), o)
 						delta = make([]byte, 0)
