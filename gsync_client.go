@@ -97,8 +97,10 @@ func Sync(ctx context.Context, r io.ReaderAt, shash hash.Hash, remote map[uint32
 
 			// If there are no block signatures from remote server, send all data blocks
 			if len(remote) == 0 {
-				o <- BlockOperation{Data: block}
-				offset += int64(n)
+				if n > 0 {
+					o <- BlockOperation{Data: block}
+					offset += int64(n)
+				}
 
 				if err == io.EOF {
 					bufferPool.Put(bfp)
