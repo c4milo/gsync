@@ -19,8 +19,11 @@ import (
 // reader instance is not nil or this function will panic.
 func Signatures(ctx context.Context, r io.Reader, shash hash.Hash) (<-chan BlockSignature, error) {
 	var index uint64
-	buffer := make([]byte, DefaultBlockSize)
 	c := make(chan BlockSignature)
+
+	bfp := bufferPool.Get().(*[]byte)
+	buffer := *bfp
+	defer bufferPool.Put(bfp)
 
 	if r == nil {
 		close(c)
@@ -83,7 +86,9 @@ func Signatures(ctx context.Context, r io.Reader, shash hash.Hash) (<-chan Block
 
 // Apply reconstructs a file given a set of operations. The caller must close the ops channel or the context when done or there will be a deadlock.
 func Apply(ctx context.Context, dst io.Writer, cache io.ReaderAt, ops <-chan BlockOperation) error {
-	buffer := make([]byte, DefaultBlockSize)
+	bfp := bufferPool.Get().(*[]byte)
+	buffer := *bfp
+	defer bufferPool.Put(bfp)
 
 	for o := range ops {
 		// Allows for cancellation.
