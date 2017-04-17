@@ -5,6 +5,8 @@
 // Package gsync implements a rsync-based algorithm for sending delta updates to a remote server.
 package gsync
 
+import "sync"
+
 const (
 	// DefaultBlockSize is the default block size.
 	DefaultBlockSize = 6 * 1024 // 6kb
@@ -60,4 +62,11 @@ type BlockOperation struct {
 	Data []byte
 	// Error is used to report any error while sending operations.
 	Error error
+}
+
+var bufferPool = sync.Pool{
+	New: func() interface{} {
+		b := make([]byte, DefaultBlockSize)
+		return &b
+	},
 }
