@@ -18,6 +18,7 @@ const (
 )
 
 // rollingHash as defined in https://www.samba.org/~tridge/phd_thesis.pdf, based on Adler-32
+// Calculates the hash for an entired block.
 func rollingHash(block []byte) (uint32, uint32, uint32) {
 	var a, b uint32
 	l := uint32(len(block) - 1)
@@ -32,6 +33,7 @@ func rollingHash(block []byte) (uint32, uint32, uint32) {
 	return r1, r2, r
 }
 
+// rollingHash2 incrementally calculates rolling checksum.
 func rollingHash2(l, r1, r2, old, new uint32) (uint32, uint32, uint32) {
 	r1 = (r1 - old + new) % mod
 	r2 = (r2 - (l * old) + r1) % mod
@@ -58,7 +60,7 @@ type BlockOperation struct {
 	Index uint64
 	// Data is the delta to be applied to the remote file. No data means
 	// the client found a matching checksum for this block, which means that the remote end proceeds to
-	// copy the block data from its local copy instead.
+	// get the block data from its local copy instead.
 	Data []byte
 	// Error is used to report any error while sending operations.
 	Error error
