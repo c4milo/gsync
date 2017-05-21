@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"hash"
 	"io"
+	"os"
 
 	"github.com/pkg/errors"
 )
@@ -109,8 +110,8 @@ func Apply(ctx context.Context, dst io.Writer, cache io.ReaderAt, ops <-chan Blo
 		if len(o.Data) > 0 {
 			block = o.Data
 		} else {
-			if cache == nil {
-				return errors.New("index operation, but no cache found")
+			if f, ok := cache.(*os.File); ok && f == nil {
+				return errors.New("index operation, but no cache file found")
 			}
 
 			index := int64(o.Index)
