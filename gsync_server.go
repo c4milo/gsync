@@ -111,7 +111,7 @@ func Apply(ctx context.Context, dst io.Writer, cache io.ReaderAt, ops <-chan Blo
 			block = o.Data
 		} else {
 			if f, ok := cache.(*os.File); ok && f == nil {
-				return errors.New("index operation, but no cache file found")
+				return errors.New("index operation, but cached file was not found")
 			}
 
 			index := int64(o.Index)
