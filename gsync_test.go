@@ -55,7 +55,7 @@ func TestRollingHash(t *testing.T) {
 			offset += int64(n)
 		} else {
 			if err == io.EOF {
-				// If EOF is reached and not match data found, we need to add trailing data
+				// If EOF is reached and not matched data is found, we need to add trailing data
 				// to delta array.
 				delta = append(delta, block...)
 				break

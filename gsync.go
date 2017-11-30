@@ -21,10 +21,10 @@ const (
 // Calculates the hash for an entire block.
 func rollingHash(block []byte) (uint32, uint32, uint32) {
 	var a, b uint32
-	l := uint32(len(block) - 1)
-	for i, k := range block {
-		a += uint32(k)
-		b += (l - uint32(i) + 1) * uint32(k)
+	l := uint32(len(block))
+	for index, value := range block {
+		a += uint32(value)
+		b += (l - uint32(index)) * uint32(value)
 	}
 	r1 := a % mod
 	r2 := b % mod
@@ -34,9 +34,9 @@ func rollingHash(block []byte) (uint32, uint32, uint32) {
 }
 
 // rollingHash2 incrementally calculates rolling checksum.
-func rollingHash2(l, r1, r2, old, new uint32) (uint32, uint32, uint32) {
-	r1 = (r1 - old + new) % mod
-	r2 = (r2 - (l * old) + r1) % mod
+func rollingHash2(l, r1, r2, outgoingValue, incomingValue uint32) (uint32, uint32, uint32) {
+	r1 = (r1 - outgoingValue + incomingValue) % mod
+	r2 = (r2 - (l * outgoingValue) + r1) % mod
 	r := r1 + (mod * r2)
 
 	return r1, r2, r
