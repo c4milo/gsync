@@ -62,7 +62,7 @@ func Sync(ctx context.Context, r io.Reader, shash hash.Hash, remote map[uint32][
 			rolling, match     bool
 			err                error
 		)
-		bufferSize := 3 * BlockSize
+		bufferSize := 16 * BlockSize
 		buffer := make([]byte, bufferSize)
 
 		defer func() {
