@@ -9,7 +9,7 @@ import "sync"
 
 var (
 	// DefaultBlockSize is the default block size.
-	BlockSize = int64(6 * 1024) // 6kb
+	BlockSize = int(6 * 1024) // 6kb
 )
 
 // Rolling checksum is up to 16 bit length for simplicity and speed.
