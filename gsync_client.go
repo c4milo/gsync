@@ -43,7 +43,7 @@ func LookUpTable(ctx context.Context, bc <-chan BlockSignature) (map[uint32][]Bl
 // so this function is expected to be called once the remote blocks map is fully populated.
 //
 // The caller must make sure the concrete reader instance is not nil or this function will panic.
-func Sync(ctx context.Context, r io.Reader, shash hash.Hash, remote map[uint32][]BlockSignature) (<-chan BlockOperation, error) {
+func Sync(ctx context.Context, r io.Reader, shash hash.Hash, datahash hash.Hash, remote map[uint32][]BlockSignature) (<-chan BlockOperation, error) {
 	if r == nil {
 		return nil, errors.New("gsync: reader required")
 	}
@@ -109,6 +109,9 @@ func Sync(ctx context.Context, r io.Reader, shash hash.Hash, remote map[uint32][
 				}
 				offset = delta
 				max = left + n
+				if datahash != nil {
+					datahash.Write(buffer[left:max])
+				}
 			}
 			// If there are no block signatures from remote server, send all data blocks
 			if len(remote) == 0 {
