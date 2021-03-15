@@ -7,11 +7,11 @@ package gsync
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"hash"
 	"io"
 
+	"github.com/minio/sha256-simd"
 	"github.com/pkg/errors"
 )
 
