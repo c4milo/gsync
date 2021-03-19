@@ -86,7 +86,7 @@ func Signatures(ctx context.Context, r io.Reader, shash hash.Hash) (<-chan Block
 }
 
 // Apply reconstructs a file given a set of operations. The caller must close the ops channel or the context when done or there will be a deadlock.
-func Apply(ctx context.Context, dst io.Writer, cache io.ReaderAt, ops <-chan BlockOperation) error {
+func Apply(ctx context.Context, dst io.Writer, cache io.ReaderAt, datahash hash.Hash, ops <-chan BlockOperation) error {
 	bfp := bufferPool.Get().(*[]byte)
 	buffer := *bfp
 	defer bufferPool.Put(bfp)
@@ -115,14 +115,16 @@ func Apply(ctx context.Context, dst io.Writer, cache io.ReaderAt, ops <-chan Blo
 			}
 
 			index := int64(o.Index)
-			n, err := cache.ReadAt(buffer, (index * DefaultBlockSize))
+			n, err := cache.ReadAt(buffer, (index * int64(BlockSize)))
 			if err != nil && err != io.EOF {
 				return errors.Wrapf(err, "failed reading cached block")
 			}
 
 			block = buffer[:n]
 		}
-
+		if datahash != nil {
+			datahash.Write(block)
+		}
 		_, err := dst.Write(block)
 		if err != nil {
 			return errors.Wrapf(err, "failed writing block to destination")

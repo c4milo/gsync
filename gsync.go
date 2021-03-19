@@ -7,9 +7,9 @@ package gsync
 
 import "sync"
 
-const (
+var (
 	// DefaultBlockSize is the default block size.
-	DefaultBlockSize = 6 * 1024 // 6kb
+	BlockSize = int(6 * 1024) // 6kb
 )
 
 // Rolling checksum is up to 16 bit length for simplicity and speed.
@@ -69,7 +69,7 @@ type BlockOperation struct {
 
 var bufferPool = sync.Pool{
 	New: func() interface{} {
-		b := make([]byte, DefaultBlockSize)
+		b := make([]byte, BlockSize)
 		return &b
 	},
 }
